@@ -7,8 +7,14 @@ import (
 	"net/http"
 )
 
+const TokenLifeTime = 10
+const Secret = "access_secret"
+const RefreshSecret = "refresh_secret"
+const RefreshTokenLifeTime = 60
+
 func main() {
 	http.HandleFunc("/login", Login)
+	http.HandleFunc("/profile", Profile)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -29,10 +35,58 @@ func Login(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
+		// authenticated
 
+		tokenString, err := GenerateToken(user.ID, TokenLifeTime, Secret)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		refreshString, err := GenerateToken(user.ID, RefreshTokenLifeTime, RefreshSecret)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		resp := &LoginResponse{
+			AccessToken:  tokenString,
+			RefreshToken: refreshString,
+		}
 		w.WriteHeader(http.StatusOK)
+
+		json.NewEncoder(w).Encode(resp)
+
 	default:
 		http.Error(w, "Only Post method", http.StatusMethodNotAllowed)
+	}
+
+}
+
+func Profile(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		tokenString := GetTokenFromBearerString(r.Header.Get("Authorization"))
+		claims, err := ValidateToken(tokenString, Secret)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		user, err := NewUserRepo().GetByID(claims.ID)
+		if err != nil {
+			http.Error(w, "invalid token", http.StatusUnauthorized)
+			return
+		}
+		resp := UserResponseProfile{
+			ID:    user.ID,
+			Email: user.Email,
+			Name:  user.Name,
+		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(resp)
+
+	default:
+		http.Error(w, "Only GET method", http.StatusMethodNotAllowed)
 	}
 
 }

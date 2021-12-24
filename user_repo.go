@@ -37,3 +37,12 @@ func (ur *UserRepo) GetByEmail(email string) (*User, error) {
 	}
 	return nil, errors.New("user not found")
 }
+
+func (ur *UserRepo) GetByID(id int) (*User, error) {
+	for _, user := range ur.users {
+		if user.ID == id {
+			return user, nil
+		}
+	}
+	return nil, errors.New("user not found")
+}

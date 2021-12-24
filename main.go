@@ -15,6 +15,7 @@ const RefreshTokenLifeTime = 60
 func main() {
 	http.HandleFunc("/login", Login)
 	http.HandleFunc("/profile", Profile)
+	http.HandleFunc("/refresh", Refresh)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -82,6 +83,19 @@ func Profile(w http.ResponseWriter, r *http.Request) {
 			Email: user.Email,
 			Name:  user.Name,
 		}
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(resp)
+
+	default:
+		http.Error(w, "Only GET method", http.StatusMethodNotAllowed)
+	}
+
+}
+
+func Refresh(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(resp)
 
